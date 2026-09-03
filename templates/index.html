@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eagle Doc RAG</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-2: #22263a;
+      --border: #2e3350;
+      --accent: #5b6af0;
+      --accent-hover: #4a58e0;
+      --accent-dim: rgba(91,106,240,0.15);
+      --success: #3ecf8e;
+      --error: #f87171;
+      --text: #e8eaf6;
+      --text-muted: #7b82a8;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px;
+      gap: 32px;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    header p {
+      margin-top: 6px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 680px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 9px 0;
+      border: none;
+      border-radius: calc(var(--radius-sm) - 2px);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab.active {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    label span.required {
+      color: var(--accent);
+      margin-left: 2px;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    select,
+    textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.875rem;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    select option {
+      background: var(--surface);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 88px;
+    }
+
+    .file-drop {
+      background: var(--bg);
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+
+    .file-drop:hover,
+    .file-drop.dragover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .file-drop input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .file-drop .drop-label {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .file-drop .drop-label strong {
+      color: var(--accent);
+    }
+
+    .file-drop .file-name {
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--success);
+      pointer-events: none;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .toggle input:checked + .toggle-slider {
+      background: var(--accent);
+    }
+
+    .toggle input:checked + .toggle-slider::before {
+      transform: translateX(16px);
+    }
+
+    .toggle-label {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    .btn-submit {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 12px 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      align-self: flex-end;
+    }
+
+    .btn-submit:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .response-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-muted);
+      min-height: 56px;
+      display: none;
+    }
+
+    .response-box.visible {
+      display: block;
+    }
+
+    .response-box.success { border-color: var(--success); color: var(--success); }
+    .response-box.error   { border-color: var(--error);   color: var(--error);   }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+
+    .status-badge.success { background: rgba(62,207,142,0.15); color: var(--success); }
+    .status-badge.error   { background: rgba(248,113,113,0.15); color: var(--error);   }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+
+    .btn-submit.loading .spinner { display: inline-block; }
+    .btn-submit.loading .btn-text { display: none; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .key-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .key-row .field { flex: 1; }
+
+    .btn-icon {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 10px 12px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+      height: 38px;
+      display: flex;
+      align-items: center;
+    }
+
+    .btn-icon:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Eagle Doc RAG</h1>
+  <p>Submit corrected extractions or plain-language instructions</p>
+</header>
+
+<div class="card">
+  <span class="card-title">Connection</span>
+
+  <div class="field">
+    <label>Endpoint</label>
+    <select id="base-url">
+      {% for ep in endpoints %}
+      <option value="{{ ep.value }}">{{ ep.label }} — {{ ep.value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="key-row">
+    <div class="field">
+      <label>API Key <span class="required">*</span></label>
+      <input type="password" id="api-key" placeholder="APIB-..." value="{{ default_api_key }}" autocomplete="off" />
+    </div>
+    <button class="btn-icon" onclick="saveKey()">Save</button>
+    <button class="btn-icon" onclick="clearKey()">Clear</button>
+  </div>
+
+  <div class="field">
+    <label>Client Reference <span style="color:var(--text-muted);font-weight:400">(x-sub-business-ref, optional)</span></label>
+    <input type="text" id="sub-ref" placeholder="e.g. A-1023" />
+  </div>
+</div>
+
+<div class="card">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('learning', this)">Corrected Extraction</button>
+    <button class="tab" onclick="switchTab('instructions', this)">Instructions</button>
+  </div>
+
+  <div id="tab-learning">
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <div class="field">
+        <label>Source Document (PDF / Image) <span class="required">*</span></label>
+        <div class="file-drop" id="drop-file">
+          <input type="file" accept=".pdf,.png,.jpg,.jpeg" onchange="setFile(this,'drop-file','file-name-file')" />
+          <div class="drop-label">Drop file or <strong>click to browse</strong></div>
+          <div class="file-name" id="file-name-file"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Original JSON <span class="required">*</span></label>
+          <div class="file-drop" id="drop-original">
+            <input type="file" accept=".json,application/json" onchange="setFile(this,'drop-original','file-name-original')" />
+            <div class="drop-label">Drop or <strong>browse</strong></div>
+            <div class="file-name" id="file-name-original"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Corrected JSON <span class="required">*</span></label>
+          <div class="file-drop" id="drop-corrected-l">
+            <input type="file" accept=".json,application/json" onchange="setFile(this,'drop-corrected-l','file-name-corrected-l')" />
+            <div class="drop-label">Drop or <strong>browse</strong></div>
+            <div class="file-name" id="file-name-corrected-l"></div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-submit" id="btn-learning" onclick="submitLearning()">
+        <span class="btn-text">Submit Extraction</span>
+        <div class="spinner"></div>
+      </button>
+    </div>
+  </div>
+
+  <div id="tab-instructions" style="display:none;">
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <div class="field">
+        <label>Instructions <span class="required">*</span></label>
+        <textarea id="instructions-text" placeholder="e.g. Comma is used as a thousand separator in this document"></textarea>
+      </div>
+      <div class="field">
+        <label>Corrected JSON <span class="required">*</span></label>
+        <div class="file-drop" id="drop-corrected-i">
+          <input type="file" accept=".json,application/json" onchange="setFile(this,'drop-corrected-i','file-name-corrected-i')" />
+          <div class="drop-label">Drop or <strong>browse</strong></div>
+          <div class="file-name" id="file-name-corrected-i"></div>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="overwrite-toggle" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">Overwrite prior learnings for this document</span>
+      </div>
+      <button class="btn-submit" id="btn-instructions" onclick="submitInstructions()">
+        <span class="btn-text">Submit Instructions</span>
+        <div class="spinner"></div>
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div>
+    <div id="response-badge" style="display:none"></div>
+    <div class="response-box" id="response-box"></div>
+  </div>
+</div>
+
+<script>
+  const LS_KEY = 'eagle_doc_api_key';
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) document.getElementById('api-key').value = saved;
+    setupDragDrop('drop-file');
+    setupDragDrop('drop-original');
+    setupDragDrop('drop-corrected-l');
+    setupDragDrop('drop-corrected-i');
+  });
+
+  function saveKey() {
+    const val = document.getElementById('api-key').value.trim();
+    if (val) { localStorage.setItem(LS_KEY, val); showToast('API key saved'); }
+  }
+
+  function clearKey() {
+    localStorage.removeItem(LS_KEY);
+    document.getElementById('api-key').value = '';
+    showToast('API key cleared');
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, {
+      position:'fixed', bottom:'24px', right:'24px',
+      background:'#22263a', border:'1px solid #2e3350',
+      color:'#e8eaf6', padding:'10px 18px', borderRadius:'8px',
+      fontSize:'0.8rem', zIndex:'9999', opacity:'1',
+      transition:'opacity 0.3s'
+    });
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 1800);
+  }
+
+  function switchTab(tab, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('tab-learning').style.display    = tab === 'learning'      ? 'block' : 'none';
+    document.getElementById('tab-instructions').style.display = tab === 'instructions' ? 'block' : 'none';
+    clearResponse();
+  }
+
+  function setFile(input, dropId, nameId) {
+    const name = input.files[0]?.name || '';
+    document.getElementById(nameId).textContent = name;
+  }
+
+  function setupDragDrop(id) {
+    const el = document.getElementById(id);
+    el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('dragover'); });
+    el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('dragover');
+      const input = el.querySelector('input[type="file"]');
+      if (e.dataTransfer.files.length) {
+        input.files = e.dataTransfer.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+  }
+
+  function setLoading(btnId, state) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = state;
+    btn.classList.toggle('loading', state);
+  }
+
+  function showResponse(status, body) {
+    const box   = document.getElementById('response-box');
+    const badge = document.getElementById('response-badge');
+    const ok    = status >= 200 && status < 300;
+    box.textContent   = JSON.stringify(body, null, 2);
+    box.className     = `response-box visible ${ok ? 'success' : 'error'}`;
+    badge.style.display = 'inline-flex';
+    badge.className     = `status-badge ${ok ? 'success' : 'error'}`;
+    badge.textContent   = ok ? `✓ ${status} OK` : `✕ ${status} Error`;
+  }
+
+  function clearResponse() {
+    document.getElementById('response-box').className = 'response-box';
+    document.getElementById('response-badge').style.display = 'none';
+  }
+
+  function getShared() {
+    return {
+      base_url:  document.getElementById('base-url').value,
+      api_key:   document.getElementById('api-key').value.trim(),
+      sub_ref:   document.getElementById('sub-ref').value.trim(),
+    };
+  }
+
+  async function submitLearning() {
+    const { base_url, api_key, sub_ref } = getShared();
+    const file      = document.querySelector('#drop-file input').files[0];
+    const original  = document.querySelector('#drop-original input').files[0];
+    const corrected = document.querySelector('#drop-corrected-l input').files[0];
+
+    if (!api_key || !file || !original || !corrected) { showToast('Please fill all required fields'); return; }
+
+    const fd = new FormData();
+    fd.append('base_url', base_url);
+    fd.append('api_key', api_key);
+    if (sub_ref) fd.append('sub_business_ref', sub_ref);
+    fd.append('file', file);
+    fd.append('original', original);
+    fd.append('corrected', corrected);
+
+    setLoading('btn-learning', true);
+    try {
+      const res  = await fetch('/submit/learning', { method: 'POST', body: fd });
+      const json = await res.json();
+      showResponse(res.status, json);
+    } catch (e) {
+      showResponse(0, { error: e.message });
+    } finally {
+      setLoading('btn-learning', false);
+    }
+  }
+
+  async function submitInstructions() {
+    const { base_url, api_key, sub_ref } = getShared();
+    const instructions = document.getElementById('instructions-text').value.trim();
+    const corrected    = document.querySelector('#drop-corrected-i input').files[0];
+    const overwrite    = document.getElementById('overwrite-toggle').checked;
+
+    if (!api_key || !instructions || !corrected) { showToast('Please fill all required fields'); return; }
+
+    const fd = new FormData();
+    fd.append('base_url', base_url);
+    fd.append('api_key', api_key);
+    if (sub_ref) fd.append('sub_business_ref', sub_ref);
+    fd.append('instructions', instructions);
+    fd.append('corrected', corrected);
+    fd.append('overwrite', overwrite);
+
+    setLoading('btn-instructions', true);
+    try {
+      const res  = await fetch('/submit/instructions', { method: 'POST', body: fd });
+      const json = await res.json();
+      showResponse(res.status, json);
+    } catch (e) {
+      showResponse(0, { error: e.message });
+    } finally {
+      setLoading('btn-instructions', false);
+    }
+  }
+</script>
+</body>
+</html>
